@@ -1,0 +1,18 @@
+Conditions:
+  Type                          Status  Reason                          Message
+  ----                          ------  ------                          -------
+  VMEventScheduled              False   NoVMEventScheduled              VM has no scheduled event
+  FrequentContainerdRestart     False   NoFrequentContainerdRestart     containerd is functioning properly
+  FrequentDockerRestart         False   NoFrequentDockerRestart         docker is functioning properly
+  FilesystemCorruptionProblem   False   FilesystemIsOK                  Filesystem is healthy
+  FrequentUnregisterNetDevice   False   NoFrequentUnregisterNetDevice   node is functioning properly
+  ContainerRuntimeProblem       False   ContainerRuntimeIsUp            container runtime service is up
+  KernelDeadlock                False   KernelHasNoDeadlock             kernel has no deadlock
+  FrequentKubeletRestart        False   NoFrequentKubeletRestart        kubelet is functioning properly
+  KubeletProblem                False   KubeletIsUp                     kubelet service is up
+  ReadonlyFilesystem            False   FilesystemIsNotReadOnly         Filesystem is not read-only
+  NetworkUnavailable            False   RouteCreated                    RouteController created a route
+  MemoryPressure                True    KubeletHasInsufficientMemory    kubelet has insufficient memory available
+  DiskPressure                  False   KubeletHasNoDiskPressure        kubelet has no disk pressure
+  PIDPressure                   False   KubeletHasSufficientPID         kubelet has sufficient PID available
+  Ready                         True    KubeletReady                    kubelet is posting ready status. 
