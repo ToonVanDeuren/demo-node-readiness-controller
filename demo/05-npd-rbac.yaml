@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-problem-detector
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-problem-detector
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["nodes/status"]
+  verbs: ["patch", "update"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-problem-detector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-problem-detector
+subjects:
+- kind: ServiceAccount
+  name: node-problem-detector
+  namespace: kube-system
+---
+# Grants NPD permission to list pods in the demo namespace so the custom
+# plugin script can check if demo-critical-supporting-daemon is running.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: npd-pod-reader
+  namespace: demo
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: npd-pod-reader
+  namespace: demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: npd-pod-reader
+subjects:
+- kind: ServiceAccount
+  name: node-problem-detector
+  namespace: kube-system

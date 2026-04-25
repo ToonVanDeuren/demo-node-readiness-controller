@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-problem-detector
+  namespace: kube-system
+data:
+  critical-daemon-monitor.json: |
+    {
+        "plugin": "custom",
+        "pluginConfig": {
+            "invoke_interval": "10s",
+            "timeout": "30s",
+            "max_output_length": 80,
+            "concurrency": 1,
+            "enable_message_change_based_condition_update": false
+        },
+        "source": "critical-daemon-custom-monitor",
+        "conditions": [
+            {
+                "type": "CriticalDaemonNotReady",
+                "reason": "CriticalDaemonIsReady",
+                "message": "demo-critical-supporting-daemon is running on this node"
+            }
+        ],
+        "rules": [
+            {
+                "type": "permanent",
+                "condition": "CriticalDaemonNotReady",
+                "reason": "CriticalDaemonIsNotRunning",
+                "path": "/config/check-critical-daemon.sh",
+                "timeout": "30s"
+            }
+        ]
+    }
+  check-critical-daemon.sh: |
+    #!/bin/bash
+    # Checks whether demo-critical-supporting-daemon has a Running pod on this node.
+    # Exit 0 → healthy (NPD sets CriticalDaemonNotReady=False, NRC removes taint)
+    # Exit 1 → problem (NPD sets CriticalDaemonNotReady=True, NRC applies taint)
+    # Exit 2 → unknown (NPD sets CriticalDaemonNotReady=Unknown, NRC keeps taint)
+
+    NAMESPACE="demo"
+    NODE_NAME="${NODE_NAME:-}"
+
+    if [ -z "$NODE_NAME" ]; then
+        echo "NODE_NAME environment variable is not set"
+        exit 2
+    fi
+
+    if ! PODS=$(kubectl get pods -n "$NAMESPACE" \
+        -l app=demo-critical-supporting-daemon \
+        --field-selector="spec.nodeName=${NODE_NAME},status.phase=Running" \
+        --no-headers 2>/dev/null); then
+        echo "Failed to query Kubernetes API"
+        exit 2
+    fi
+
+    if [ -z "$PODS" ]; then
+        echo "demo-critical-supporting-daemon is NOT running on node ${NODE_NAME}"
+        exit 1
+    else
+        echo "demo-critical-supporting-daemon is running on node ${NODE_NAME}"
+        exit 0
+    fi

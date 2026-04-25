@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-workload
+  namespace: demo
+  labels:
+    app: demo-workload
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-workload
+  template:
+    metadata:
+      labels:
+        app: demo-workload
+    spec:
+      # No toleration for readiness.k8s.io/critical-daemon-not-ready.
+      # This pod will only be scheduled on nodes where the taint has been
+      # removed, i.e. nodes where demo-critical-supporting-daemon is Running.
+      containers:
+      - name: workload
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi

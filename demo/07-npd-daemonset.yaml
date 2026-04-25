@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-problem-detector
+  namespace: kube-system
+  labels:
+    app: node-problem-detector
+spec:
+  selector:
+    matchLabels:
+      app: node-problem-detector
+  template:
+    metadata:
+      labels:
+        app: node-problem-detector
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      initContainers:
+      - name: install-kubectl
+        image: bitnami/kubectl:latest
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "cp $(which kubectl) /kubectl-bin/kubectl"]
+        volumeMounts:
+        - name: kubectl-bin
+          mountPath: /kubectl-bin
+      containers:
+      - name: node-problem-detector
+        command:
+        - /node-problem-detector
+        - --config.custom-plugin-monitor=/config/critical-daemon-monitor.json
+        image: registry.k8s.io/node-problem-detector/node-problem-detector:v0.8.19
+        resources:
+          limits:
+            cpu: 10m
+            memory: 80Mi
+          requests:
+            cpu: 10m
+            memory: 80Mi
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        - name: kubectl-bin
+          mountPath: /usr/local/bin/kubectl
+          subPath: kubectl
+      serviceAccountName: node-problem-detector
+      volumes:
+      - name: config
+        configMap:
+          name: node-problem-detector
+          items:
+          - key: critical-daemon-monitor.json
+            path: critical-daemon-monitor.json
+          - key: check-critical-daemon.sh
+            path: check-critical-daemon.sh
+            mode: 0755
+      - name: kubectl-bin
+        emptyDir: {}
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists

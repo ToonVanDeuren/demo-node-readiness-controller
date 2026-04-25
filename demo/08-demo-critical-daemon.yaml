@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: demo-critical-supporting-daemon
+  namespace: demo
+  labels:
+    app: demo-critical-supporting-daemon
+spec:
+  selector:
+    matchLabels:
+      app: demo-critical-supporting-daemon
+  template:
+    metadata:
+      labels:
+        app: demo-critical-supporting-daemon
+    spec:
+      # The daemon must tolerate the readiness taint so it can start on nodes
+      # that are not yet considered ready. Its presence is what clears the taint.
+      tolerations:
+      - key: "readiness.k8s.io/critical-daemon-not-ready"
+        operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: daemon
+        image: busybox:stable
+        command:
+        - sh
+        - -c
+        - |
+          echo "demo-critical-supporting-daemon started on $(hostname)"
+          while true; do
+            echo "demo-critical-supporting-daemon running at $(date)"
+            sleep 30
+          done
+        resources:
+          requests:
+            cpu: 10m
+            memory: 10Mi
+          limits:
+            cpu: 100m
+            memory: 32Mi

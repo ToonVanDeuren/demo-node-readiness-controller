@@ -1,0 +1,21 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: critical-daemon-readiness
+spec:
+  # Apply to all nodes in the cluster
+  nodeSelector: {}
+
+  # The NRC removes the taint when CriticalDaemonNotReady is False.
+  # NPD sets this condition to False when the daemon pod is Running,
+  # and to True when it is absent. The taint stays until the condition is met.
+  conditions:
+    - type: "CriticalDaemonNotReady"
+      requiredStatus: "False"
+
+  taint:
+    key: "readiness.k8s.io/critical-daemon-not-ready"
+    effect: "NoSchedule"
+
+  # Continuous mode re-applies the taint if the daemon stops running after node boot
+  enforcementMode: "continuous"

@@ -1,0 +1,289 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: nodereadinessrules.readiness.node.x-k8s.io
+spec:
+  group: readiness.node.x-k8s.io
+  names:
+    kind: NodeReadinessRule
+    listKind: NodeReadinessRuleList
+    plural: nodereadinessrules
+    shortNames:
+    - nrr
+    singular: nodereadinessrule
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - description: Continuous, Bootstrap or Dryrun - shows if the rule is in enforcement
+        or dryrun mode.
+      jsonPath: .spec.enforcementMode
+      name: Mode
+      type: string
+    - description: The readiness taint applied by this rule.
+      jsonPath: .spec.taint.key
+      name: Taint
+      type: string
+    - description: The age of this resource
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: NodeReadinessRule is the Schema for the NodeReadinessRules API.
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of NodeReadinessRule
+            properties:
+              conditions:
+                description: conditions contains a list of Node conditions that define
+                  the criteria for taint management.
+                items:
+                  properties:
+                    requiredStatus:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      minLength: 1
+                      type: string
+                  required:
+                  - requiredStatus
+                  - type
+                  type: object
+                maxItems: 32
+                minItems: 1
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+                x-kubernetes-validations:
+                - message: conditions is immutable
+                  rule: self == oldSelf
+              dryRun:
+                type: boolean
+              enforcementMode:
+                enum:
+                - bootstrap-only
+                - continuous
+                type: string
+                x-kubernetes-validations:
+                - message: enforcementMode is immutable
+                  rule: self == oldSelf
+              nodeSelector:
+                properties:
+                  matchExpressions:
+                    items:
+                      properties:
+                        key:
+                          type: string
+                        operator:
+                          type: string
+                        values:
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+                x-kubernetes-validations:
+                - message: nodeSelector is immutable
+                  rule: self == oldSelf
+              taint:
+                properties:
+                  effect:
+                    type: string
+                  key:
+                    type: string
+                  timeAdded:
+                    format: date-time
+                    type: string
+                  value:
+                    type: string
+                required:
+                - effect
+                - key
+                type: object
+                x-kubernetes-validations:
+                - message: taint key must start with 'readiness.k8s.io/'
+                  rule: self.key.startsWith('readiness.k8s.io/')
+                - message: taint key length must be at most 253 characters
+                  rule: self.key.size() <= 253
+                - message: taint key must have exactly one '/' separator
+                  rule: size(self.key.split('/')) == 2
+                - message: taint key name part must be 1-63 characters
+                  rule: size(self.key.split('/')[1]) > 0 && size(self.key.split('/')[1]) <= 63
+                - message: taint key name part must consist of alphanumeric characters,
+                    '-', '_' or '.', and must start and end with an alphanumeric character
+                  rule: self.key.split('/')[1].matches('^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$')
+                - message: taint value length must be at most 63 characters
+                  rule: '!has(self.value) || self.value.size() <= 63'
+                - message: taint effect must be one of 'NoSchedule', 'PreferNoSchedule', 'NoExecute'
+                  rule: self.effect in ['NoSchedule', 'PreferNoSchedule', 'NoExecute']
+                - message: taint key is immutable
+                  rule: '!has(oldSelf.key) || self.key == oldSelf.key'
+                - message: taint effect is immutable
+                  rule: '!has(oldSelf.effect) || self.effect == oldSelf.effect'
+                - message: taint value is immutable
+                  rule: '!has(oldSelf.value) || self.value == oldSelf.value'
+            required:
+            - conditions
+            - enforcementMode
+            - nodeSelector
+            - taint
+            type: object
+          status:
+            description: status defines the observed state of NodeReadinessRule
+            minProperties: 1
+            properties:
+              appliedNodes:
+                items:
+                  maxLength: 253
+                  type: string
+                maxItems: 5000
+                type: array
+                x-kubernetes-list-type: set
+              dryRunResults:
+                minProperties: 1
+                properties:
+                  affectedNodes:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  riskyOperations:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  summary:
+                    maxLength: 4096
+                    minLength: 1
+                    type: string
+                  taintsToAdd:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  taintsToRemove:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                required:
+                - summary
+                type: object
+              failedNodes:
+                items:
+                  properties:
+                    lastEvaluationTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 10240
+                      minLength: 1
+                      type: string
+                    nodeName:
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    reason:
+                      maxLength: 256
+                      minLength: 1
+                      type: string
+                  required:
+                  - lastEvaluationTime
+                  - nodeName
+                  type: object
+                maxItems: 5000
+                type: array
+                x-kubernetes-list-map-keys:
+                - nodeName
+                x-kubernetes-list-type: map
+              nodeEvaluations:
+                items:
+                  properties:
+                    conditionResults:
+                      items:
+                        properties:
+                          currentStatus:
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          requiredStatus:
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          type:
+                            maxLength: 316
+                            minLength: 1
+                            type: string
+                        required:
+                        - currentStatus
+                        - requiredStatus
+                        - type
+                        type: object
+                      maxItems: 5000
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - type
+                      x-kubernetes-list-type: map
+                    lastEvaluationTime:
+                      format: date-time
+                      type: string
+                    nodeName:
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    taintStatus:
+                      enum:
+                      - Present
+                      - Absent
+                      type: string
+                  required:
+                  - conditionResults
+                  - lastEvaluationTime
+                  - nodeName
+                  - taintStatus
+                  type: object
+                maxItems: 5000
+                type: array
+                x-kubernetes-list-map-keys:
+                - nodeName
+                x-kubernetes-list-type: map
+              observedGeneration:
+                format: int64
+                minimum: 1
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
