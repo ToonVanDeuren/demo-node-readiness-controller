@@ -123,6 +123,28 @@ Check results with `kubectl get noderreadinessrule -o yaml` under `.status.dryRu
 - `1` → daemon not running → condition `True` → taint applied
 - `2` → API error → condition `Unknown` → taint stays
 
+## Known limitations
+
+### NPD always initializes conditions to False (healthy)
+
+When NPD starts, it seeds all custom conditions to `False` (healthy) regardless of actual state. The `conditions` array in the plugin config only sets the reason/message metadata — the status is hardcoded to `False` before the first plugin run.
+
+The first real status is only written after the first `invoke_interval` has elapsed (NPD starts mid-interval, so the gap varies). You will see this in the logs:
+
+```
+# At startup — condition seeded to False (daemon assumed ready):
+Initialize condition generated: [{Type:CriticalDaemonNotReady Status:False ...}]
+
+# After first plugin run (~10–22s later) — real status written:
+New status generated: ... CriticalDaemonNotReady Status:True ...
+```
+
+**Consequence:** there is a brief window after NPD starts where a node appears ready even if the critical daemon is not running. Reducing `invoke_interval` shortens the window but cannot eliminate it.
+
+**Fail-safe alternative for production:** invert where the default lives. Pre-apply the taint to nodes at bootstrap, so nodes start cordoned. NPD/NRC then *remove* the taint once the daemon is confirmed running. This makes NPD's initial `False` irrelevant — the node is already blocked until proven healthy.
+
+For this demo the brief window is acceptable.
+
 ## Versions
 
 | Component | Version |
